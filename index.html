@@ -1,58 +1,173 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="UTF-8">
-<title>Automatische GitHub‑Bildergalerie</title>
-<style>
+  <meta charset="UTF-8">
+  <title>Automatische GitHub‑Bildergalerie</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
     body {
-        font-family: Arial, sans-serif;
-        background: #f5f5f5;
-        padding: 20px;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #f5f5f5;
+      color: #222;
     }
+
     h1 {
-        text-align: center;
+      text-align: center;
+      margin-bottom: 5px;
     }
+
+    p.info {
+      text-align: center;
+      margin-top: 0;
+      margin-bottom: 20px;
+      color: #555;
+    }
+
     .gallery {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 15px;
-        justify-content: center;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 12px;
     }
+
     .gallery img {
-        max-width: 250px;
-        border: 1px solid #ccc;
-        padding: 5px;
-        background: white;
+      width: 100%;
+      height: auto;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      object-fit: cover;
+      cursor: zoom-in;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
     }
-</style>
+
+    .gallery img:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+    }
+
+    /* Lightbox Hintergrund */
+    .lightbox-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.85);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+
+    /* Großes Bild */
+    .lightbox-image {
+      max-width: 90%;
+      max-height: 90%;
+      border-radius: 6px;
+      box-shadow: 0 0 20px rgba(255,255,255,0.3);
+      cursor: zoom-out;
+    }
+
+    /* Schließen-Button */
+    .lightbox-close {
+      position: fixed;
+      top: 20px;
+      right: 30px;
+      font-size: 40px;
+      color: white;
+      cursor: pointer;
+      z-index: 10000;
+      line-height: 1;
+    }
+
+    .loading,
+    .error {
+      text-align: center;
+      margin-top: 20px;
+      color: #777;
+    }
+
+    .error {
+      color: #b00020;
+    }
+  </style>
 </head>
 <body>
 
-<h1>Automatische GitHub‑Bildergalerie</h1>
-<p style="text-align:center;">Alle Bilder aus dem Repository werden automatisch geladen.</p>
+  <h1>Automatische GitHub‑Bildergalerie</h1>
+  <p class="info">Alle Bilder aus dem Repository werden automatisch geladen.</p>
 
-<div class="gallery" id="gallery"></div>
+  <!-- Lightbox -->
+  <div id="lightbox" class="lightbox-overlay">
+    <span class="lightbox-close">&times;</span>
+    <img id="lightbox-img" class="lightbox-image" alt="">
+  </div>
 
-<script>
-const apiUrl = "https://api.github.com/repos/moepsken/Josef/contents/";
-const gallery = document.getElementById("gallery");
+  <!-- Galerie-Container -->
+  <div id="gallery" class="gallery"></div>
+  <div id="status" class="loading">Bilder werden geladen …</div>
 
+  <script>
+    const apiUrl = "https://api.github.com/repos/moepsken/Josef/contents/";
+    const gallery = document.getElementById("gallery");
+    const statusEl = document.getElementById("status");
 
-fetch(apiUrl)
-    .then(response => response.json())
-    .then(files => {
-        files.forEach(file => {
-            if (file.name.match(/\.(jpg|jpeg|png|gif)$/i)) {
-                const img = new Image();
-                img.src = file.download_url;
-                gallery.appendChild(img);
-            }
+    // Lightbox-Funktionen
+    function openLightbox(src) {
+      const lb = document.getElementById("lightbox");
+      const img = document.getElementById("lightbox-img");
+      img.src = src;
+      lb.style.display = "flex";
+    }
+
+    document.querySelector(".lightbox-close").onclick = function () {
+      document.getElementById("lightbox").style.display = "none";
+    };
+
+    document.getElementById("lightbox").onclick = function (e) {
+      if (e.target.id === "lightbox") {
+        document.getElementById("lightbox").style.display = "none";
+      }
+    };
+
+    // Bilder aus GitHub-API laden
+    fetch(apiUrl)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error("API-Fehler: " + response.status);
+        }
+        return response.json();
+      })
+      .then(files => {
+        const imageFiles = files.filter(file => {
+          const name = file.name.toLowerCase();
+          return name.endsWith(".jpg") || name.endsWith(".jpeg") ||
+                 name.endsWith(".png") || name.endsWith(".gif");
         });
-    })
-    .catch(error => {
-        console.error("Fehler beim Laden der Bilder:", error);
-    });
-</script>
+
+        if (imageFiles.length === 0) {
+          statusEl.textContent = "Keine Bilder im Repository gefunden.";
+          return;
+        }
+
+        statusEl.textContent = "";
+
+        imageFiles.forEach(file => {
+          const img = document.createElement("img");
+          img.src = file.download_url;
+          img.alt = file.name;
+          img.onclick = () => openLightbox(file.download_url);
+          gallery.appendChild(img);
+        });
+      })
+      .catch(error => {
+        console.error(error);
+        statusEl.className = "error";
+        statusEl.textContent = "Fehler beim Laden der Bilder.";
+      });
+  </script>
 
 </body>
 </html>
