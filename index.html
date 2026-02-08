@@ -59,7 +59,6 @@
       justify-content: center;
       align-items: center;
       z-index: 9999;
-      flex-direction: column;
     }
 
     /* Großes Bild */
@@ -83,27 +82,6 @@
       line-height: 1;
     }
 
-    /* Navigation */
-    .nav-btn {
-      position: fixed;
-      top: 50%;
-      transform: translateY(-50%);
-      font-size: 60px;
-      color: white;
-      cursor: pointer;
-      user-select: none;
-      z-index: 10000;
-      padding: 10px;
-    }
-
-    .nav-left {
-      left: 20px;
-    }
-
-    .nav-right {
-      right: 20px;
-    }
-
     .loading,
     .error {
       text-align: center;
@@ -124,9 +102,7 @@
   <!-- Lightbox -->
   <div id="lightbox" class="lightbox-overlay">
     <span class="lightbox-close">&times;</span>
-    <span class="nav-btn nav-left">&#10094;</span>
     <img id="lightbox-img" class="lightbox-image" alt="">
-    <span class="nav-btn nav-right">&#10095;</span>
   </div>
 
   <!-- Galerie-Container -->
@@ -138,54 +114,30 @@
     const gallery = document.getElementById("gallery");
     const statusEl = document.getElementById("status");
 
-    let images = [];
-    let currentIndex = 0;
-
-    // Lightbox öffnen
-    function openLightbox(index) {
-      currentIndex = index;
-      document.getElementById("lightbox-img").src = images[index];
-      document.getElementById("lightbox").style.display = "flex";
+    // Lightbox-Funktionen
+    function openLightbox(src) {
+      const lb = document.getElementById("lightbox");
+      const img = document.getElementById("lightbox-img");
+      img.src = src;
+      lb.style.display = "flex";
     }
 
-    // Lightbox schließen
-    function closeLightbox() {
+    document.querySelector(".lightbox-close").onclick = function () {
       document.getElementById("lightbox").style.display = "none";
-    }
-
-    document.querySelector(".lightbox-close").onclick = closeLightbox;
-
-    document.getElementById("lightbox").onclick = function (e) {
-      if (e.target.id === "lightbox") closeLightbox();
     };
 
-    // Navigation
-    function showNext() {
-      currentIndex = (currentIndex + 1) % images.length;
-      document.getElementById("lightbox-img").src = images[currentIndex];
-    }
-
-    function showPrev() {
-      currentIndex = (currentIndex - 1 + images.length) % images.length;
-      document.getElementById("lightbox-img").src = images[currentIndex];
-    }
-
-    document.querySelector(".nav-right").onclick = showNext;
-    document.querySelector(".nav-left").onclick = showPrev;
-
-    // Tastatursteuerung
-    document.addEventListener("keydown", function (e) {
-      if (document.getElementById("lightbox").style.display === "flex") {
-        if (e.key === "ArrowRight") showNext();
-        if (e.key === "ArrowLeft") showPrev();
-        if (e.key === "Escape") closeLightbox();
+    document.getElementById("lightbox").onclick = function (e) {
+      if (e.target.id === "lightbox") {
+        document.getElementById("lightbox").style.display = "none";
       }
-    });
+    };
 
-    // Bilder aus GitHub laden
+    // Bilder aus GitHub-API laden
     fetch(apiUrl)
       .then(response => {
-        if (!response.ok) throw new Error("API-Fehler: " + response.status);
+        if (!response.ok) {
+          throw new Error("API-Fehler: " + response.status);
+        }
         return response.json();
       })
       .then(files => {
@@ -202,13 +154,11 @@
 
         statusEl.textContent = "";
 
-        imageFiles.forEach((file, index) => {
-          images.push(file.download_url);
-
+        imageFiles.forEach(file => {
           const img = document.createElement("img");
           img.src = file.download_url;
           img.alt = file.name;
-          img.onclick = () => openLightbox(index);
+          img.onclick = () => openLightbox(file.download_url);
           gallery.appendChild(img);
         });
       })
